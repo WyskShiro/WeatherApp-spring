@@ -1,20 +1,27 @@
 package will.shiro.forecast.forecast.weather
 
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
 
 @RestController
-class WeatherController {
-
-    @Autowired
-    lateinit var weatherService: WeatherService
+class WeatherController @Autowired constructor(
+    val weatherService: WeatherService
+) {
 
     @GetMapping("/weather")
-    fun getCurrentWeather(): String {
-        return "Hello"
+    suspend fun getWeather(@RequestParam("city") city: String) = coroutineScope {
+        val weatherDeferred = async(start = CoroutineStart.LAZY) { weatherService.getWeather(city) }
+
+        when (val weather = weatherDeferred.await()) {
+            null -> ResponseEntity.status(HttpStatus.NOT_FOUND).build()
+            else -> ResponseEntity.status(HttpStatus.OK).body(weather)
+        }
     }
 
     @PostMapping("/weather")
